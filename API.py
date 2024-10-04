@@ -6,6 +6,7 @@ import ast, os
 import pandas as pd
 import time
 from collections import defaultdict
+from flasgger import Swagger
 
 from ibm_watson_machine_learning.foundation_models import Model
 from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
@@ -15,6 +16,8 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
+swagger = Swagger(app)
+
 
 from flask import Flask, request, jsonify
 from pymilvus import (
@@ -212,6 +215,70 @@ def hello_world():
 
 @app.route("/milvus_query", methods=["POST"])
 def queryToMilvus():
+    """
+    Endpoint to query Milvus with the given payload.
+    ---
+    tags:
+      - Milvus
+    parameters:
+      - in: body
+        name: payload
+        required: true
+        description: JSON payload containing data for querying Milvus
+        schema:
+          type: object
+          properties:
+            input_data:
+              type: array
+              items:
+                type: object
+                properties:
+                  values:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          user_question:
+                            type: string
+                            example: "apa tugas pengawas potong buah?"
+    responses:
+      200:
+        description: A JSON object with the processed result
+        schema:
+          type: object
+          properties:
+            document_id:
+              type: string
+              example: "doc123"
+            embeddings:
+              type: array
+              items:
+                type: object
+                properties:
+                  vector:
+                    type: array
+                    items:
+                      type: number
+                    example: [0.1, 0.5, 0.3]
+      400:
+        description: Invalid input
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Invalid input"
+      500:
+        description: Internal server error
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Error details"
+    """
     try:
         payload = request.get_json()  # Get JSON payload from request
         if not payload:
@@ -227,6 +294,7 @@ def queryToMilvus():
     except Exception as e:
         logging.error(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
+
     
 
 @app.route("/send_to_watsonx", methods=["POST"])
