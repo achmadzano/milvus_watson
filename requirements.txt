@@ -5,4 +5,4 @@ sentence-transformers
 python-dotenv
 ibm-watson
 ibm-watson-machine-learning
-flassger
+flasger
