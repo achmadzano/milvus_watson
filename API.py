@@ -5,6 +5,7 @@ import requests
 import ast, os
 import pandas as pd
 import time
+from collections import defaultdict
 
 from ibm_watson_machine_learning.foundation_models import Model
 from ibm_watson_machine_learning.metanames import GenTextParamsMetaNames as GenParams
@@ -39,7 +40,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "yujin13",
+    collection_name: str = "indoagri_query",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
@@ -88,7 +89,6 @@ def extract_embedding_raw(result):
     data = [item['embedding_raw'] for item in result['predictions'][0]['values']]
     return data
 
-
 def process_payload(payload):
     output = []
 
@@ -108,6 +108,28 @@ def process_payload(payload):
                 output.append({'values': results})
 
     return {'predictions': output}
+
+
+def group_embeddings_by_document(predictions):
+    # Dictionary to hold the list of 'embedding_raw' for each document name
+    combined_data = defaultdict(list)
+
+    # Access 'values' inside 'predictions'
+    for prediction in predictions:
+        for item in prediction['values']:
+            # Ensure item is a dictionary with necessary keys
+            if isinstance(item, dict) and 'metadata_json' in item and 'embedding_raw' in item:
+                document_name = item['metadata_json']
+                combined_data[document_name].append(item['embedding_raw'])
+
+    # Create final JSON format with 'document_name' first
+    final_json = [
+        {'document_name': doc_name.strip(), 'data': text_list}
+        for doc_name, text_list in combined_data.items()
+    ]
+
+    # Return the final JSON
+    return final_json
 
 
 #=============================Credentials==============================
@@ -188,18 +210,23 @@ def Milvus2Text(payload):
 def hello_world():
     return "<p>Hello, World!</p>"
 
-# @app.route("/milvus_query", methods=["POST"])
-# def queryToMilvus():
-#     try:
-#         payload = request.get_json()  # Get JSON payload from request
-#         if not payload:
-#             return jsonify({"error": "Invalid input"}), 400
+@app.route("/milvus_query", methods=["POST"])
+def queryToMilvus():
+    try:
+        payload = request.get_json()  # Get JSON payload from request
+        if not payload:
+            return jsonify({"error": "Invalid input"}), 400
 
-#         result = process_payload(payload)
-#         return jsonify(result), 200
-#     except Exception as e:
-#         logging.error(f"Error processing request: {e}")
-#         return jsonify({"error": str(e)}), 500
+        # Log payload to inspect structure
+        logging.debug(f"Received payload: {payload}")
+
+        result = process_payload(payload)
+        print(result)
+        result = group_embeddings_by_document(result['predictions'])
+        return jsonify(result), 200
+    except Exception as e:
+        logging.error(f"Error processing request: {e}")
+        return jsonify({"error": str(e)}), 500
     
 
 @app.route("/send_to_watsonx", methods=["POST"])

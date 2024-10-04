@@ -1,7 +1,7 @@
 Flask
 requests
-ibm-watson-machine-learning==1.0.327
-ibm-watson
 pymilvus==2.4.1
 sentence-transformers
 python-dotenv
+ibm-watson
+ibm-watson-machine-learning

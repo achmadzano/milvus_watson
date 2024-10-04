@@ -1,2 +1,4 @@
 .venv
 .env
+cert-milvus.pem
+__pycache__
