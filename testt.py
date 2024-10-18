@@ -229,9 +229,27 @@ def Milvus2Text(payload):
         document_name = data['values'][0][0]['query_result'][1]
         document_name = list(set(document_name))
         output.append(answer)
-        print (f"ini output ya {output}")
+
+        def extract_page_numbers(query_result):
+            pages = []
+            for text_list in query_result:
+                for text in text_list:
+                    # Regex to find "Halaman xx dari xx"
+                    matches = re.findall(r'Halaman (\d+) dari \d+', text)  # Use findall to get all matches
+                    pages.extend([int(page) for page in matches])  # Convert to int and extend the list
+            return pages
+        
+        # Accessing the query_result from the data
+        query_result = data['values'][0][0]['query_result']
+
+        # Extracting page numbers
+        page_numbers = extract_page_numbers(query_result)
+        print('Page Numbers:', page_numbers)  # Debugging statement
+
+
+        # print (f"ini output ya {output}")
         print (f"ini data ya {data}")
-    return {'output': [{'user_question': user_question, 'query_result': query_result, 'values': output, 'document_name': document_name}]}
+    return {'output': [{'user_question': user_question, 'query_result': query_result, 'values': output, 'document_name': document_name, 'page_numbers': page_numbers}]}
 
 @app.post("/")
 def hello_world():
