@@ -1,5 +1,5 @@
 from flask import Flask, Response, jsonify, request, redirect
-import sys
+import sys, re
 import json
 import requests
 import ast, os
@@ -100,7 +100,8 @@ def similarity_search(
 
 def extract_embedding_raw(result):
     data = [item['embedding_raw'] for item in result['predictions'][0]['values']]
-    return data
+    document_name = [item['metadata_json'] for item in result['predictions'][0]['values']]
+    return data, document_name
 
 def process_payload(payload):
     # Assuming payload is a query string, not a nested dictionary
@@ -225,10 +226,12 @@ def Milvus2Text(payload):
         user_question = data['values'][0][0]['user_question']
         query_result = data['values'][0][0]['query_result']
         answer = answer_from_table(user_question, query_result)
+        document_name = data['values'][0][0]['query_result'][1]
+        document_name = list(set(document_name))
         output.append(answer)
         print (f"ini output ya {output}")
-
-    return {'output': [{'user_question': user_question, 'values': output}]}
+        print (f"ini data ya {data}")
+    return {'output': [{'user_question': user_question, 'query_result': query_result, 'values': output, 'document_name': document_name}]}
 
 @app.post("/")
 def hello_world():
@@ -253,7 +256,7 @@ def queryToMilvus():
         return jsonify({"error": str(e)}), 500
 
 class QueryRequest(BaseModel):
-    user_question: str = Field(..., example="What is the capital of France?")
+    user_question: str = Field(..., example="apa tugas pengawas potong buah?")
 
 @app.post("/send_to_watsonx")
 async def stream_response(request: QueryRequest):
@@ -273,7 +276,15 @@ async def stream_response(request: QueryRequest):
             raise ValueError("Expected result_milvus to be a dictionary or list, but got a string.")
         
         data = extract_embedding_raw(result_milvus)  # Check the return type here
+        document_name = data[1]
+        # if document_name sama maka ambil distinct
+        if len(set(document_name)) == 1:
+            document_name = list(set(document_name))[0]
+        else:
+            document_name = document_name[0]
+
         print("Extracted Data:", data)  # Debugging statement
+        print("Document Name:", document_name)  # Debugging statement
         
         # Ensure data is the correct type
         if isinstance(data, str):
