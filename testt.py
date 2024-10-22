@@ -38,7 +38,7 @@ import logging
 app = FastAPI()
 
 #=============================Milvus Credentials==============================
-milvus_host="158.175.183.91"
+milvus_host="161.156.196.249"
 milvus_port="8080"
 milvus_password="4XYg2XK6sMU4UuBEjHq4EhYE8mSFO3Qq" 
 
@@ -53,7 +53,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "indoagri_sop",
+    collection_name: str = "indoagri",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
