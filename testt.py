@@ -53,7 +53,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "indoagri",
+    collection_name: str = "indoagri_sop",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
