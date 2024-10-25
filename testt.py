@@ -53,7 +53,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "indoagri_sop",
+    collection_name: str = "workshop_collection",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
@@ -127,20 +127,22 @@ def extract_embedding_raw(result):
 def process_payload(payload):
     # Assuming payload is a query string, not a nested dictionary
     user_question = payload  # Directly use the query string
-    limit = 10  # Set a default limit if needed
     milvus_connection_alias = 'default'  # Default Milvus connection alias
+    collection_name = "indoagri_sop"  # Default collection name, adjust as needed
 
-    # Perform the similarity search using the question
-    results = similarity_search(user_question, limit, milvus_connection_alias)
+    # Perform the similarity search using the question without a limit
+    results = similarity_search(user_question, milvus_connection_alias=milvus_connection_alias, collection_name=collection_name, limit=10)
 
     # Format the results
     output = []
-    if isinstance(results, list) and len(results) > 1:
-        output.append({'values': results[:limit]})  # Append the first 'limit' results
+    if isinstance(results, list) and len(results) > 0:
+        output.append({'values': results})  # Append all results if available
     else:
-        output.append({'values': results})
+        output.append({'values': []})  # Append an empty list if no results found
 
     return {'predictions': output}
+
+
 
 
 
