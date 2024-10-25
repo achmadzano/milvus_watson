@@ -65,6 +65,7 @@ def similarity_search(
         "params": {"nprobe": 10}
     }
 
+    # Load collection
     collection = Collection(
         name=collection_name,
         using=milvus_connection_alias
@@ -72,11 +73,11 @@ def similarity_search(
     collection.load()
     logging.debug("Collection loaded.")
 
-    # Embedding model
+    # Load embedding model
     model = SentenceTransformer(hf_model_id)
     logging.debug("Embedding model loaded.")
 
-    # Search the index for the closest vectors
+    # Perform the similarity search
     results = collection.search(
         data=[model.encode(user_question)],
         anns_field="embedding_vector",
@@ -87,16 +88,36 @@ def similarity_search(
         consistency_level="Strong"
     )
 
-    # Retrieving the text associated with the results ids
+    # Gather existing IDs in the collection for checking adjacency
+    available_ids = set()
+    all_results = collection.query(
+        expr="id >= 760",  # Adjust this based on your known ID range
+        output_fields=["id"],
+        consistency_level="Strong"
+    )
+    available_ids.update(result['id'] for result in all_results)
+
+    # Expand result IDs to include n-1 and n+1 for each ID, checking availability
+    expanded_ids = set()
+    for id in results[0].ids:
+        if id - 1 in available_ids:
+            expanded_ids.add(id - 1)
+        expanded_ids.add(id)
+        if id + 1 in available_ids:
+            expanded_ids.add(id + 1)
+
+    # Query expanded results
+    expr = f"id in {list(expanded_ids)}"
     results_text = collection.query(
-        expr="id in {}".format(results[0].ids),
-        output_fields=["id", "embedding_raw", "metadata_json"],
+        expr=expr,
+        output_fields=["id", "embedding_raw", "document_id", "metadata_json"],
         consistency_level="Strong"
     )
     collection.release()
-    logging.debug("Text chunks successfully retrieved.")
+    logging.debug("Text chunks successfully retrieved with expanded context.")
 
     return results_text
+
 
 def extract_embedding_raw(result):
     data = [item['embedding_raw'] for item in result['predictions'][0]['values']]
