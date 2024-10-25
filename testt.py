@@ -53,7 +53,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "workshop_collection",
+    collection_name: str = "indoagri_sop",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
@@ -179,19 +179,43 @@ creds = {
 }
 
 #=============================wx.ai functions==============================
-def send_to_watsonxai(prompt, creds=creds, project_id=WX_PROJECT_ID,
-                      model_name='meta-llama/llama-3-1-70b-instruct',
-                      decoding_method="greedy",
-                      max_new_tokens=1000,
-                      min_new_tokens=1,
-                      temperature=0,
-                      repetition_penalty=1.0,
-                      stop_sequences=["\n\n", "\n"],
-                      ):
-    # Ensure the prompt is valid
-    assert not any(map(lambda p: len(p) < 1, [prompt])), "Make sure none of the prompts in the inputs are empty."
+#=============================Credentials==============================
+WX_API_KEY = "ON4BdvORJc02uEl6dXyvpNTPxhlO0_LG-k8CzG8Z6Cfu"
+WX_PROJECT_ID = "4cae5e78-da4f-4aed-9510-cb1fbebd13d3"
+WX_URL = "https://us-south.ml.cloud.ibm.com"
 
-    # Set model parameters
+creds = {
+    "url": WX_URL,
+    "apikey": WX_API_KEY 
+}
+
+#=============================wx.ai functions==============================
+def send_to_watsonxai(prompt, creds=creds, project_id=WX_PROJECT_ID,
+                    model_name='meta-llama/llama-3-1-70b-instruct', #'mistralai/mixtral-8x7b-instruct-v01',#'meta-llama/llama-3-70b-instruct', #'mistralai/mixtral-8x7b-instruct-v01',', #'meta-llama/llama-2-13b-chat', #
+                    decoding_method="greedy",
+                    max_new_tokens=1000,
+                    min_new_tokens=1,
+                    temperature=0,
+                    repetition_penalty=1.0,
+                    stop_sequences=["\n\n","\n"],
+                    ):
+    '''
+    helper function for sending prompts and params to Watsonx.ai
+
+    Args:  
+        prompts:list list of text prompts
+        decoding:str Watsonx.ai parameter "sample" or "greedy"
+        max_new_tok:int Watsonx.ai parameter for max new tokens/response returned
+        temperature:float Watsonx.ai parameter for temperature (range 0>2)
+        repetition_penalty:float Watsonx.ai parameter for repetition penalty (range 1.0 to 2.0)
+
+    Returns: None
+        prints response
+    '''
+
+    assert not any(map(lambda prompt: len(prompt) < 1, prompt)), "make sure none of the prompts in the inputs prompts are empty"
+
+    # Instantiate parameters for text generation
     model_params = {
         GenParams.DECODING_METHOD: decoding_method,
         GenParams.MIN_NEW_TOKENS: min_new_tokens,
@@ -202,40 +226,31 @@ def send_to_watsonxai(prompt, creds=creds, project_id=WX_PROJECT_ID,
         GenParams.STOP_SEQUENCES: stop_sequences
     }
 
-    # Initialize the model with parameters
+    # Instantiate a model proxy object to send your requests
     model = Model(
         model_id=model_name,
         params=model_params,
         credentials=creds,
-        project_id=project_id
-    )
-
-    # Generate text from the model (without media_type argument)
-    output_gen = model.generate_text_stream(prompt=prompt)  # This is a generator
-
-    # Collect the output from the generator
-    output = ""
-    for text in output_gen:
-        print (text)
-        output += text  # Concatenate each part to output
-
-    return output.strip()  # Strip any leading/trailing whitespace
+        project_id=project_id)
 
 
+    output = model.generate_text(prompt)
+    return output
 
 def answer_from_table(user_question, data):
-    if not data:
+    if data ==[]:
         return {'answer': "Maaf, informasi yang anda butuhkan tidak tersedia di database, silahkan coba dengan pertanyaan lain! Terima kasih."}
     else:
-        prompt = f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
+        prompt= f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
         Berikut adalah pertanyaan dari user: {user_question}
-        Jawab pertanyaan dari user dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
+        Jawab pertanyaan dari user  dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
         Jawaban yang diberikan harus dirangkai dengan baik dari data yang disediakan.
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.
         Hindari penggunaan new line saat menjawab.
-        Jawaban:"""
-        
+        Jawaban:
+        """
         output = send_to_watsonxai(prompt)
+        # print(prompt)
 
         if 'REQUERY' in output.strip():
             return {"output": 'REQUERY'.strip()}  
