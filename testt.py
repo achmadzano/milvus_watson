@@ -53,7 +53,7 @@ def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "indoagri_sop",
+    collection_name: str = "indoagri_sop_final",
     hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
 ) -> list:
 
@@ -140,7 +140,7 @@ def process_payload(payload):
     # Assuming payload is a query string, not a nested dictionary
     user_question = payload  # Directly use the query string
     milvus_connection_alias = 'default'  # Default Milvus connection alias
-    collection_name = "indoagri_sop"  # Default collection name, adjust as needed
+    collection_name = "indoagri_sop_final"  # Default collection name, adjust as needed
 
     # Perform the similarity search using the question without a limit
     results = similarity_search(user_question, milvus_connection_alias=milvus_connection_alias, collection_name=collection_name, limit=10)
