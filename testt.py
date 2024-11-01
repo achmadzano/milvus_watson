@@ -97,14 +97,26 @@ def similarity_search(
     )
     available_ids.update(result['id'] for result in all_results)
 
-    # Expand result IDs to include n-1 and n+1 for each ID, checking availability
+    # # Expand result IDs to include n-1 and n+1 for each ID, checking availability
+    # expanded_ids = set()
+    # for id in results[0].ids:
+    #     if id - 1 in available_ids:
+    #         expanded_ids.add(id - 1)
+    #     expanded_ids.add(id)
+    #     if id + 1 in available_ids:
+    #         expanded_ids.add(id + 1)
+    # Expand result IDs to include n-2 and n+2 for each ID, checking availability
     expanded_ids = set()
     for id in results[0].ids:
+        if id - 2 in available_ids:
+            expanded_ids.add(id - 2)
         if id - 1 in available_ids:
             expanded_ids.add(id - 1)
         expanded_ids.add(id)
         if id + 1 in available_ids:
             expanded_ids.add(id + 1)
+        if id + 2 in available_ids:
+            expanded_ids.add(id + 2)
 
     # Query expanded results
     expr = f"id in {list(expanded_ids)}"
@@ -243,6 +255,7 @@ def answer_from_table(user_question, data):
     else:
         prompt= f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
         Berikut adalah pertanyaan dari user: {user_question}
+        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan maka jawab dengan "REPHRASE" dan minta user untuk merubah pertanyaan.
         Jawab pertanyaan dari user  dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
         Jawaban yang diberikan harus dirangkai dengan baik dari data yang disediakan.
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.
