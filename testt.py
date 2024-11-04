@@ -302,6 +302,96 @@ def Milvus2Text(payload):
         print (f"ini data ya {data}")
     return {'output': [{'user_question': user_question, 'query_result': query_result, 'values': output, 'document_name': document_name, 'page_numbers': page_numbers}]}
 
+from ibm_watson_machine_learning.foundation_models import Model
+import os
+import json
+
+WX_API_KEY = "ON4BdvORJc02uEl6dXyvpNTPxhlO0_LG-k8CzG8Z6Cfu"
+WX_PROJECT_ID = "4cae5e78-da4f-4aed-9510-cb1fbebd13d3"
+WX_URL = "https://us-south.ml.cloud.ibm.com"
+
+creds = {
+    "url": WX_URL,
+    "apikey": WX_API_KEY 
+}
+
+def classify_text(history: str, user_query: str):
+    parameters = {
+        "decoding_method": "greedy",
+        "max_new_tokens": 5100,
+        "min_new_tokens": 1,
+        "repetition_penalty": 1,
+        "stop_sequences": ["\n\n\n"]
+    }
+    llama3 = "meta-llama/llama-3-1-70b-instruct"
+    model = Model(
+        model_id=llama3,
+        params=parameters,
+        credentials=creds,
+        project_id=WX_PROJECT_ID
+    )
+
+    template = f""" 
+
+    Tentukan apakah pertanyaan baru dari pengguna relevan dengan percakapan sebelumnya.
+    Output dalam JSON valid sebagai berikut
+    Jawaban:
+    {{
+        "is_relevant": "YES/NO"
+    }}
+
+    Pilih salah satu dalam JSON. Jangan tambahkan apapun selain JSON tersebut.
+
+    Input: 
+    Pertanyaan user:
+    Apa tugas mandor?
+
+    Riwayat Percakapan:
+    [Penyiraman bibit dilakukan 2 kali sehari, yaitu sejak pagi hingga pukul 11.00 dan pukul 15.00 sampai selesai. Kebutuhan air rata-rata untuk setiap bibit adalah ± 2 – 3 liter per large bag per hari tergantung umur bibit. Bila terjadi hujan minimal 8 mm pada hari sebelumnya maka tidak perlu dilakukan penyiraman pada hari itu. Penyiraman manual dilakukan dengan selang air yang dilengkapi dengan kepala gembor di ujungnya, sehingga terjadinya erosi tanah dan hilangnya pupuk granular dari dalam large bag dapat dihindari. Penyiraman dengan mengunakan instalasi kirico dapat dilakukan sekaligus dalam 2 plot (2 ha) selama 30 menit atau setara 6 mm curah hujan.]
+
+    Jawaban:
+    {{
+        "is_relevant": "NO"
+    }}
+
+    Input: 
+    Pertanyaan user:
+    Pengendalian gulma
+
+    Riwayat Percakapan:
+    [Pengendalian gulma di pre-nursery hanya dilakukan dengan cara manual, yaitu dengan mencabuti seluruh jenis gulma yang tumbuh dalam baby bag. Bersamaaan dengan pengendalian gulma tersebut, dilakukan penambahan tanah ke dalam baby bag untuk bibit yang doyong dan tersembul akarnya. Gulma di dalam large bag dilakukan dengan cara manual setiap bulan sampai bibit cukup besar. Tidak diperbolehkan mengendalikan gulma di dalam large bag dengan menggunakan herbisida. Konsolidasi bibit (mendirikan dan menegakkan bibit doyong) dilakukan bersamaan dengan pengendalian gulma. Pemberian mulsa dapat menekan pertumbuhan gulma. Gulma di antara large bag dapat dilakukan dengan penyemprotan herbisida dengan bahan aktif glifosat 480 AS dosis 2-2,5 liter per ha blanket (konsentrasi 0,5 %) atau gramoxone konsentrasi 2 %. Nozel dari sprayer yang digunakan adalah polijet kuning/ VLV 200 dan posisinya harus lebih rendah dari permukaan large bag pada saat penyemprotan.]
+
+    Jawaban:
+    {{
+            "is_relevant": "YES"
+    }}
+
+    Input: 
+    Pertanyaan user:
+    {user_query}
+
+    Riwayat Pesrcakapan: 
+    {history}
+
+    Jawaban: 
+
+    """
+
+    # Generate text using the model
+    generated_response = model.generate_text(prompt=template)
+    
+    # Print the generated response for debugging
+    print("Generated response:", generated_response)
+    
+    # Attempt to parse JSON with error handling
+    try:
+        json_results = json.loads(generated_response)
+    except json.JSONDecodeError:
+        print("Failed to parse JSON. Generated response:", generated_response)
+        json_results = {"is_relevant": "NO"}  # Default response if parsing fails
+
+    return json_results
+
 @app.post("/")
 def hello_world():
     return "<p>Hello, World!</p>"
@@ -327,8 +417,11 @@ def queryToMilvus():
 class QueryRequest(BaseModel):
     user_question: str = Field(..., example="apa tugas pengawas potong buah?")
 
+session_1 = []
+
 @app.post("/send_to_watsonx")
 async def stream_response(request: QueryRequest):
+    global session_1  # Access the global session_1 variable
     query = request.user_question.strip()
     
     try:
@@ -369,7 +462,28 @@ async def stream_response(request: QueryRequest):
 
         # Call the function that sends the payload to Watson
         result_watson = Milvus2Text(payload_watson)  # Check the return type here
+        output_text = result_watson['output'][0]['values'][0]['output']
+        # Check relevance if there's prior history
+        if session_1:
+            # Classify the text to check relevance
+            result_comparison = classify_text(history=session_1, user_query=query)
+            print("Relevance check:", result_comparison)
+            is_relevant = result_comparison.get("is_relevant") == "YES"
+        else:
+            # Assume relevance on the first question
+            is_relevant = True
+
+        # Update session_1 based on relevance
+        if is_relevant:
+            session_1.append(output_text)  # Append to session_1 if relevant
+        else:
+            session_1 = [output_text]  # Reset session_1 if not relevant
+
+        # Print current history for debugging
+        # return session_1, watson_results
         print("Result Watson:", result_watson)  # Debugging statement
+        print ("ini session sebelumnya", session_1)
+        print("ini session_count", len(session_1))
 
         # Return the result as a JSON response
         return JSONResponse(content=result_watson, status_code=200)
