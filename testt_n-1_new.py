@@ -49,53 +49,71 @@ connections.connect("default", host=milvus_host,
                     server_name="localhost", user="root",
                     password=milvus_password)
 
+# Load the embedding model once at the module level
+embedding_model = SentenceTransformer('LazarusNLP/all-indo-e5-small-v4')
+logging.debug("Embedding model loaded and ready for use.")
+
 def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "workhsop_collection",
-    hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
-    # hf_model_id: str = 'sentence-transformers/all-MiniLM-L6-v2'
-    ) -> list:
-
+    collection_name: str = "indoagri_sop_final"
+) -> list:
+    
     # Search parameters
     search_params = {
-        "metric_type": "L2", 
-        "offset": 0, 
-        "ignore_growing": False, 
+        "metric_type": "L2",
+        "offset": 0,
+        "ignore_growing": False,
         "params": {"nprobe": 10}
     }
 
+    # Load collection
     collection = Collection(
-        name = collection_name,
-        using = milvus_connection_alias
+        name=collection_name,
+        using=milvus_connection_alias
     )
     collection.load()
     logging.debug("Collection loaded.")
 
-    # Embedding model
-    model = SentenceTransformer(hf_model_id)
-    logging.debug("Embedding model loaded.")
-
-    # Search the index for the 3 closest vectors
+    # Perform the similarity search
     results = collection.search(
-        data = [model.encode(user_question)],
-        anns_field = "embedding_vector",
-        param = search_params,
-        limit = limit,
-        expr = None,
-        output_field = ['title'],
-        consistency_level = "Strong"
+        data=[embedding_model.encode(user_question)],  # Use the pre-loaded model
+        anns_field="embedding_vector",
+        param=search_params,
+        limit=limit,
+        expr=None,
+        output_field=['title'],
+        consistency_level="Strong"
     )
 
-    # Retrieving the text associated with the results ids
+    # Gather existing IDs in the collection for checking adjacency
+    available_ids = set()
+    all_results = collection.query(
+        expr="id >= 760",  # Adjust this based on your known ID range
+        output_fields=["id"],
+        consistency_level="Strong"
+    )
+    available_ids.update(result['id'] for result in all_results)
+
+    # Expand result IDs to include n-1 and n+1 for each ID, checking availability
+    expanded_ids = set()
+    for id in results[0].ids:
+        if id - 1 in available_ids:
+            expanded_ids.add(id - 1)
+        expanded_ids.add(id)
+        if id + 1 in available_ids:
+            expanded_ids.add(id + 1)
+
+    # Query expanded results
+    expr = f"id in {list(expanded_ids)}"
     results_text = collection.query(
-        expr = "id in {}".format(results[0].ids), 
-        output_fields = ["id", "embedding_raw", "document_id", "metadata_json"],
+        expr=expr,
+        output_fields=["id", "embedding_raw", "document_id", "metadata_json"],
         consistency_level="Strong"
     )
     collection.release()
-    logging.debug("Text chunks succesfully retrieved.")
+    logging.debug("Text chunks successfully retrieved with expanded context.")
 
     return results_text
 
@@ -221,7 +239,7 @@ def answer_from_table(user_question, data):
     else:
         prompt= f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
         Berikut adalah pertanyaan dari user: {user_question}
-        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan maka jawab dengan "REPHRASE" dan minta user untuk merubah pertanyaan.
+        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan maka jawab dengan "REPHRASE".
         Jawab pertanyaan dari user  dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
         Jawaban yang diberikan harus dirangkai dengan baik dari data yang disediakan.
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.

@@ -97,26 +97,14 @@ def similarity_search(
     )
     available_ids.update(result['id'] for result in all_results)
 
-    # # Expand result IDs to include n-1 and n+1 for each ID, checking availability
-    # expanded_ids = set()
-    # for id in results[0].ids:
-    #     if id - 1 in available_ids:
-    #         expanded_ids.add(id - 1)
-    #     expanded_ids.add(id)
-    #     if id + 1 in available_ids:
-    #         expanded_ids.add(id + 1)
-    # Expand result IDs to include n-2 and n+2 for each ID, checking availability
+    # Expand result IDs to include n-1 and n+1 for each ID, checking availability
     expanded_ids = set()
     for id in results[0].ids:
-        if id - 2 in available_ids:
-            expanded_ids.add(id - 2)
         if id - 1 in available_ids:
             expanded_ids.add(id - 1)
         expanded_ids.add(id)
         if id + 1 in available_ids:
             expanded_ids.add(id + 1)
-        if id + 2 in available_ids:
-            expanded_ids.add(id + 2)
 
     # Query expanded results
     expr = f"id in {list(expanded_ids)}"
