@@ -239,7 +239,8 @@ def answer_from_table(user_question, data):
     else:
         prompt= f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
         Berikut adalah pertanyaan dari user: {user_question}
-        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan maka jawab dengan "REPHRASE".
+        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan pertanyaan maka jawab dengan "REPHRASE".
+        Identifikasi juga apakah input tersebut bukan merupakan input yang asal-asalan, jika asal-asalan maka jawab dengan "REPHRASE".
         Jawab pertanyaan dari user  dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
         Jawaban yang diberikan harus dirangkai dengan baik dari data yang disediakan.
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.
