@@ -245,6 +245,8 @@ def answer_from_table(user_question, data):
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.
         Hindari penggunaan new line saat menjawab.
         Jangan halusinasi, jika tidak ada referensi yang sesuai berikan "Tidak ada informasi yang sesuai".
+        Jika pada {data} terdapat kata yang tidak sesuai dengan {user_question}, maka jawab dengan "Tidak ada informasi yang sesuai".
+        Jika pada {data} terdapat kata yang sesuai dengan {user_question}, maka jawab dengan jawaban yang sesuai.
         Jawaban:
         """
         output = send_to_watsonxai(prompt)
