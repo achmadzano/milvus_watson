@@ -49,14 +49,17 @@ connections.connect("default", host=milvus_host,
                     server_name="localhost", user="root",
                     password=milvus_password)
 
+# Load the embedding model once at the module level
+embedding_model = SentenceTransformer('LazarusNLP/all-indo-e5-small-v4')
+logging.debug("Embedding model loaded and ready for use.")
+
 def similarity_search(
     user_question: str,
     limit=3,
     milvus_connection_alias: str = "default",
-    collection_name: str = "indoagri_sop_final",
-    hf_model_id: str = 'LazarusNLP/all-indo-e5-small-v4'
+    collection_name: str = "indoagri_sop_final"
 ) -> list:
-
+    
     # Search parameters
     search_params = {
         "metric_type": "L2",
@@ -73,13 +76,9 @@ def similarity_search(
     collection.load()
     logging.debug("Collection loaded.")
 
-    # Load embedding model
-    model = SentenceTransformer(hf_model_id)
-    logging.debug("Embedding model loaded.")
-
     # Perform the similarity search
     results = collection.search(
-        data=[model.encode(user_question)],
+        data=[embedding_model.encode(user_question)],  # Use the pre-loaded model
         anns_field="embedding_vector",
         param=search_params,
         limit=limit,

@@ -238,13 +238,12 @@ def answer_from_table(user_question, data):
         return {'answer': "Maaf, informasi yang anda butuhkan tidak tersedia di database, silahkan coba dengan pertanyaan lain! Terima kasih."}
     else:
         prompt= f"""Berikut adalah informasi yang perlu disampaikan secara lengkap: {data}
-        Berikut adalah pertanyaan dari user: {user_question}, Jika input yang diberikan lebih dari 80 karakter, maka jawab dengan "Ganti pertanyaan anda!".
+        Berikut adalah pertanyaan dari user: {user_question}
+        Setelah mendapatkan {user_question} maka identifikasi apakah input yang diberikan adalah pertanyaan, jika bukan maka jawab dengan "REPHRASE".
         Jawab pertanyaan dari user  dengan ramah, membantu, dan interaktif hanya menggunakan informasi yang tersedia.
         Jawaban yang diberikan harus dirangkai dengan baik dari data yang disediakan.
         Jawaban yang diberikan harus mencakup semua informasi yang telah diberikan serta lengkap.
         Hindari penggunaan new line saat menjawab.
-        Jangan halusinasi, jika tidak ada referensi yang sesuai berikan "Tidak ada informasi yang sesuai".
-        Jika pada {data} terdapat kata yang tidak sesuai dengan {user_question}, maka jawab dengan "Tidak ada informasi yang sesuai".
         Jawaban:
         """
         output = send_to_watsonxai(prompt)
