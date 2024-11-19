@@ -1,7 +1,6 @@
-Flask
-requests
-pymilvus==2.4.1
+fastapi
+uvicorn
+pymilvus
 sentence-transformers
-python-dotenv
 ibm-watson
 ibm-watson-machine-learning
