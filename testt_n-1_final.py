@@ -3,7 +3,6 @@ import sys, re
 import json
 import requests
 import ast, os
-import pandas as pd
 import time
 from collections import defaultdict
 
