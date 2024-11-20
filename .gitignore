@@ -1,5 +1,4 @@
 .venv
 .env
-cert-milvus.pem
 __pycache__
 zano
